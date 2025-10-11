@@ -1,6 +1,8 @@
 import db from "../config/db.js";
 
-// GET - Listar todos os serviços
+// =============================
+// Listar todos os serviços
+// =============================
 export const getAllServices = async (req, res) => {
   try {
     const [rows] = await db.query(`
@@ -20,91 +22,82 @@ export const getAllServices = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error("Erro no getAllServices:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: "Erro ao listar serviços" });
   }
 };
 
-// GET - Buscar serviço por ID
+// =============================
+// Buscar serviço por ID (com relacionamentos)
+// =============================
 export const getServiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [service] = await db.query(`
-      SELECT s.*, i.imagem
+    const [serviceRows] = await db.query(
+      `
+      SELECT 
+        s.id,
+        s.titulo,
+        s.descricao,
+        s.detalhes,
+        s.preco,
+        s.localidade,
+        s.contato,
+        i.imagem
       FROM servico s
       LEFT JOIN imagen_servico i ON s.id = i.servico_id
       WHERE s.id = ?
-    `, [id]);
+      `,
+      [id]
+    );
 
-    if (service.length === 0) {
+    if (serviceRows.length === 0)
       return res.status(404).json({ message: "Serviço não encontrado" });
-    }
 
+    const service = serviceRows[0];
+
+    // Características
     const [caracteristicas] = await db.query(
       `SELECT descricao FROM caracteristica_servico WHERE servico_id = ?`,
       [id]
     );
 
-    const [incluidos] = await db.query(
+    // Itens inclusos
+    const [inclusos] = await db.query(
       `SELECT descricao FROM servico_incluido WHERE servico_id = ?`,
       [id]
     );
 
-    res.json({
-      ...service[0],
-      caracteristicas: caracteristicas.map(c => c.descricao),
-      inclusos: incluidos.map(i => i.descricao)
-    });
+    service.caracteristicas = caracteristicas.map((c) => c.descricao);
+    service.inclusos = inclusos.map((i) => i.descricao);
+
+    res.json(service);
   } catch (error) {
     console.error("Erro no getServiceById:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: "Erro ao buscar detalhes do serviço" });
   }
 };
 
-// POST - Criar novo serviço
-export const createService = async (req, res) => {
+// =============================
+// Listar serviços adicionais (para o PaymentPage)
+// =============================
+export const getAdditionalServices = async (req, res) => {
   try {
-    const { titulo, descricao, detalhes, preco, localidade, contato } = req.body;
-
-    const [result] = await db.query(`
-      INSERT INTO servico (titulo, descricao, detalhes, preco, localidade, contato)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [titulo, descricao, detalhes, preco, localidade, contato]);
-
-    res.status(201).json({ id: result.insertId, message: "Serviço criado com sucesso" });
+    const [rows] = await db.query(`
+      SELECT 
+        id,
+        titulo,
+        descricao,
+        preco,
+        icone
+      FROM servico_adicional
+    `);
+    res.json(rows);
   } catch (error) {
-    console.error("Erro no createService:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Erro ao listar serviços adicionais:", error);
+    res.status(500).json({ message: "Erro ao listar serviços adicionais" });
   }
 };
 
-// PUT - Atualizar serviço
-export const updateService = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { titulo, descricao, detalhes, preco, localidade, contato } = req.body;
 
-    await db.query(`
-      UPDATE servico 
-      SET titulo=?, descricao=?, detalhes=?, preco=?, localidade=?, contato=? 
-      WHERE id=?
-    `, [titulo, descricao, detalhes, preco, localidade, contato, id]);
 
-    res.json({ message: "Serviço atualizado com sucesso" });
-  } catch (error) {
-    console.error("Erro no updateService:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// DELETE - Remover serviço
-export const deleteService = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.query(`DELETE FROM servico WHERE id=?`, [id]);
-    res.json({ message: "Serviço removido com sucesso" });
-  } catch (error) {
-    console.error("Erro no deleteService:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
