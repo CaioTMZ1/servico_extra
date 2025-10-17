@@ -1,8 +1,5 @@
 import db from "../config/db.js";
 
-// =============================
-// Listar todos os serviços
-// =============================
 export const getAllServices = async (req, res) => {
   try {
     const [rows] = await db.query(`
@@ -26,9 +23,6 @@ export const getAllServices = async (req, res) => {
   }
 };
 
-// =============================
-// Buscar serviço por ID (com relacionamentos)
-// =============================
 export const getServiceById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -56,13 +50,11 @@ export const getServiceById = async (req, res) => {
 
     const service = serviceRows[0];
 
-    // Características
     const [caracteristicas] = await db.query(
       `SELECT descricao FROM caracteristica_servico WHERE servico_id = ?`,
       [id]
     );
 
-    // Itens inclusos
     const [inclusos] = await db.query(
       `SELECT descricao FROM servico_incluido WHERE servico_id = ?`,
       [id]
@@ -78,9 +70,7 @@ export const getServiceById = async (req, res) => {
   }
 };
 
-// =============================
-// Listar serviços adicionais (para o PaymentPage)
-// =============================
+
 export const getAdditionalServices = async (req, res) => {
   try {
     const [rows] = await db.query(`

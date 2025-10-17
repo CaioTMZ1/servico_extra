@@ -1,6 +1,5 @@
 import db from "../config/db.js";
 
-// Lista todos os serviços adicionais
 export const getAllAdditionalServices = async (req, res) => {
   try {
     const [rows] = await db.query(`

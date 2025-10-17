@@ -4,11 +4,9 @@ import { getAllAdditionalServices } from "../controllers/additionalServiceContro
 
 const router = express.Router();
 
-// Serviços principais
+
 router.get("/services", getAllServices);
 router.get("/services/:id", getServiceById);
-
-// Serviços adicionais
 router.get("/additional-services", getAllAdditionalServices);
 
 export default router;
