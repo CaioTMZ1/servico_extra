@@ -1,31 +1,31 @@
 import db from "../config/db.js";
 
+// =========================
+//  🔹 Listar todos os serviços
+// =========================
 export const getAllServices = async (req, res) => {
   try {
     const [rows] = await db.query(`
-  SELECT 
-    s.id,
-    s.titulo,
-    s.descricao,
-    s.detalhes,
-    s.preco,
-    s.localidade,
-    s.contato,
-    MIN(i.imagem) AS imagem  -- pega apenas uma imagem por serviço
-  FROM servico s
-  LEFT JOIN imagen_servico i ON s.id = i.servico_id
-  GROUP BY 
-    s.id, s.titulo, s.descricao, s.detalhes, s.preco, s.localidade, s.contato
-`);
+      SELECT 
+        s.id,
+        s.titulo,
+        s.descricao,
+        s.detalhes,
+        s.preco,
+        s.localidade,
+        s.contato,
+        MIN(i.imagem) AS imagem
+      FROM servico s
+      LEFT JOIN imagen_servico i ON s.id = i.servico_id
+      GROUP BY s.id, s.titulo, s.descricao, s.detalhes, s.preco, s.localidade, s.contato
+    `);
 
-
-    // 🔹 Converter imagem (caso seja BLOB ou Base64 puro)
     const services = rows.map((service) => ({
       ...service,
       imagem: service.imagem
         ? service.imagem.toString().startsWith("data:image")
-          ? service.imagem.toString() // já vem no formato certo
-          : `data:image/jpeg;base64,${service.imagem.toString("base64")}` // converte Blob p/ base64
+          ? service.imagem.toString()
+          : `data:image/jpeg;base64,${service.imagem.toString("base64")}`
         : null,
     }));
 
@@ -36,11 +36,14 @@ export const getAllServices = async (req, res) => {
   }
 };
 
-
+// =========================
+//  🔹 Buscar serviço por ID
+// =========================
 export const getServiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // 🔸 Busca serviço principal
     const [serviceRows] = await db.query(
       `
       SELECT 
@@ -50,10 +53,8 @@ export const getServiceById = async (req, res) => {
         s.detalhes,
         s.preco,
         s.localidade,
-        s.contato,
-        i.imagem
+        s.contato
       FROM servico s
-      LEFT JOIN imagen_servico i ON s.id = i.servico_id
       WHERE s.id = ?
       `,
       [id]
@@ -64,19 +65,61 @@ export const getServiceById = async (req, res) => {
 
     const service = serviceRows[0];
 
-    const [caracteristicas] = await db.query(
-      `SELECT descricao FROM caracteristica_servico WHERE servico_id = ?`,
-      [id]
+    // 🔸 Busca todas as imagens do serviço
+    const [imagens] = await db.query(
+      `SELECT imagem FROM imagen_servico WHERE servico_id = ?`,
+      [service.id]
     );
 
+    service.imagens = imagens.map((img) => {
+      const val = img.imagem?.toString() || "";
+      return val.startsWith("data:image") ? val : `data:image/jpeg;base64,${val}`;
+    });
+
+    service.imagem = service.imagens.length > 0 ? service.imagens[0] : null;
+
+    // Garante que o ID seja numérico antes de usar na query
+    const servicoId = Number(service.id);
+
+    // 🔹 Características
+    const [caracteristicas] = await db.query(
+      `SELECT descricao FROM caracteristica_servico WHERE servico_id = ?`,
+      [servicoId]
+    );
+
+    // 🔹 Itens inclusos
     const [inclusos] = await db.query(
       `SELECT descricao FROM servico_incluido WHERE servico_id = ?`,
-      [id]
+      [servicoId]
     );
 
     service.caracteristicas = caracteristicas.map((c) => c.descricao);
     service.inclusos = inclusos.map((i) => i.descricao);
 
+
+    // 🔸 Avaliações mockadas (temporário)
+    service.avaliacoes = [
+      {
+        autor: "Maria Silva",
+        nota: 5,
+        comentario: "Serviço excepcional! A equipe é muito atenciosa e profissional.",
+        data: "15 de agosto, 2024",
+      },
+      {
+        autor: "João Santos",
+        nota: 4,
+        comentario: "Experiência incrível! Superou todas as expectativas.",
+        data: "10 de agosto, 2024",
+      },
+      {
+        autor: "Ana Costa",
+        nota: 5,
+        comentario: "Muito bom, recomendo! Ambiente excelente.",
+        data: "5 de agosto, 2024",
+      },
+    ];
+
+    // 🔸 Retorno final
     res.json(service);
   } catch (error) {
     console.error("Erro no getServiceById:", error);
@@ -84,7 +127,9 @@ export const getServiceById = async (req, res) => {
   }
 };
 
-
+// =========================
+//  🔹 Serviços adicionais
+// =========================
 export const getAdditionalServices = async (req, res) => {
   try {
     const [rows] = await db.query(`
@@ -96,12 +141,10 @@ export const getAdditionalServices = async (req, res) => {
         icone
       FROM servico_adicional
     `);
+
     res.json(rows);
   } catch (error) {
     console.error("Erro ao listar serviços adicionais:", error);
     res.status(500).json({ message: "Erro ao listar serviços adicionais" });
   }
 };
-
-
-
