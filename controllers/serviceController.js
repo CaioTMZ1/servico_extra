@@ -1,8 +1,5 @@
 import db from "../config/db.js";
 
-// =========================
-//  🔹 Listar todos os serviços
-// =========================
 export const getAllServices = async (req, res) => {
   try {
     const [rows] = await db.query(`
@@ -36,14 +33,10 @@ export const getAllServices = async (req, res) => {
   }
 };
 
-// =========================
-//  🔹 Buscar serviço por ID
-// =========================
 export const getServiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 🔸 Busca serviço principal
     const [serviceRows] = await db.query(
       `
       SELECT 
@@ -65,7 +58,7 @@ export const getServiceById = async (req, res) => {
 
     const service = serviceRows[0];
 
-    // 🔸 Busca todas as imagens do serviço
+
     const [imagens] = await db.query(
       `SELECT imagem FROM imagen_servico WHERE servico_id = ?`,
       [service.id]
@@ -78,16 +71,13 @@ export const getServiceById = async (req, res) => {
 
     service.imagem = service.imagens.length > 0 ? service.imagens[0] : null;
 
-    // Garante que o ID seja numérico antes de usar na query
     const servicoId = Number(service.id);
 
-    // 🔹 Características
     const [caracteristicas] = await db.query(
       `SELECT descricao FROM caracteristica_servico WHERE servico_id = ?`,
       [servicoId]
     );
 
-    // 🔹 Itens inclusos
     const [inclusos] = await db.query(
       `SELECT descricao FROM servico_incluido WHERE servico_id = ?`,
       [servicoId]
